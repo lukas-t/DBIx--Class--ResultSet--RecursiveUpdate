@@ -193,7 +193,7 @@ sub recursive_update {
         $object->$name( $other_methods{$name} );
     }
     for my $name ( keys %pre_updates ) {
-        _update_relation( $self, $name, $pre_updates{$name}, $object, $if_not_submitted );
+        _update_relation( $self, $name, $pre_updates{$name}, $object, $if_not_submitted, $unknown_params_ok, $m2m_force_set_rel );
     }
 
     # $self->_delete_empty_auto_increment($object);
@@ -230,7 +230,9 @@ sub recursive_update {
                 push @rows,
                     recursive_update(
                     resultset => $rel_source->resultset,
-                    updates   => $elem
+                    updates   => $elem,
+                    unknown_params_ok => $unknown_params_ok,
+                    m2m_force_set_rel => $m2m_force_set_rel,
                     );
             }
             else {
@@ -241,7 +243,7 @@ sub recursive_update {
         $object->$set_meth( \@rows );
     }
     for my $name ( keys %post_updates ) {
-        _update_relation( $self, $name, $post_updates{$name}, $object, $if_not_submitted );
+        _update_relation( $self, $name, $post_updates{$name}, $object, $if_not_submitted, $unknown_params_ok, $m2m_force_set_rel );
     }
     delete $ENV{DBIC_NULLABLE_KEY_NOWARN};
     return $object;
@@ -260,9 +262,9 @@ sub _get_columns_by_accessor {
     return %columns;
 }
 
-# Arguments: $rs, $name, $updates, $row, $if_not_submitted
+# Arguments: $rs, $name, $updates, $row, $if_not_submitted, $unknown_params_ok, $m2m_force_set_rel
 sub _update_relation {
-    my ( $self, $name, $updates, $object, $if_not_submitted ) = @_;
+    my ( $self, $name, $updates, $object, $if_not_submitted, $unknown_params_ok, $m2m_force_set_rel ) = @_;
 
     # this should never happen because we're checking the paramters passed to
     # recursive_update, but just to be sure...
@@ -313,7 +315,10 @@ sub _update_relation {
             my $sub_object = recursive_update(
                 resultset => $related_resultset,
                 updates   => $sub_updates,
-                resolved  => $resolved
+                resolved  => $resolved,
+                unknown_params_ok => $unknown_params_ok,
+                m2m_force_set_rel => $m2m_force_set_rel,
+
             );
 
             push @updated_objs, $sub_object;
@@ -373,14 +378,20 @@ sub _update_relation {
                 $sub_object = recursive_update(
                     resultset => $related_resultset,
                     updates   => $updates,
-                    object    => $object->$name
+                    object    => $object->$name,
+                    unknown_params_ok => $unknown_params_ok,
+                    m2m_force_set_rel => $m2m_force_set_rel,
+
                 );
             }
             else {
                 $sub_object = recursive_update(
                     resultset => $related_resultset,
                     updates   => $updates,
-                    resolved  => $resolved
+                    resolved  => $resolved,
+                    unknown_params_ok => $unknown_params_ok,
+                    m2m_force_set_rel => $m2m_force_set_rel,
+
                 );
             }
         }
